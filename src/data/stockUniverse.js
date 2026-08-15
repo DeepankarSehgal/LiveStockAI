@@ -1,29 +1,30 @@
-// Database of BSE & NSE Stocks, Indices and FnO Contracts
+// Database of BSE & NSE Stocks, Indices and FnO Contracts with Yahoo Finance Ticker Mapping
 
 export const MARKET_INDICES = [
-  { symbol: "NIFTY 50", name: "NIFTY 50 Index", exchange: "NSE", isIndex: true, basePrice: 24580.40, lotSize: 25, change: +142.30, pChange: +0.58 },
-  { symbol: "SENSEX", name: "BSE SENSEX", exchange: "BSE", isIndex: true, basePrice: 80620.15, lotSize: 10, change: +410.80, pChange: +0.51 },
-  { symbol: "BANKNIFTY", name: "NIFTY Bank", exchange: "NSE", isIndex: true, basePrice: 52340.80, lotSize: 15, change: -125.40, pChange: -0.24 },
-  { symbol: "INDIA VIX", name: "India Volatility Index", exchange: "NSE", isIndex: true, basePrice: 14.85, lotSize: 0, change: -0.45, pChange: -2.94 },
+  { symbol: "NIFTY 50", yahooTicker: "^NSEI", name: "NIFTY 50 Index", exchange: "NSE", isIndex: true, basePrice: 24580.40, lotSize: 25, change: +142.30, pChange: +0.58 },
+  { symbol: "SENSEX", yahooTicker: "^BSESN", name: "BSE SENSEX", exchange: "BSE", isIndex: true, basePrice: 80620.15, lotSize: 10, change: +410.80, pChange: +0.51 },
+  { symbol: "BANKNIFTY", yahooTicker: "^NSEBANK", name: "NIFTY Bank", exchange: "NSE", isIndex: true, basePrice: 52340.80, lotSize: 15, change: -125.40, pChange: -0.24 },
+  { symbol: "INDIA VIX", yahooTicker: "^INDIAVIX", name: "India Volatility Index", exchange: "NSE", isIndex: true, basePrice: 14.85, lotSize: 0, change: -0.45, pChange: -2.94 },
 ];
 
 export const STOCK_UNIVERSE = [
   {
     symbol: "RELIANCE",
+    yahooTicker: "RELIANCE.NS",
     name: "Reliance Industries Ltd",
     exchange: "NSE & BSE",
     sector: "Energy / Conglomerate",
-    basePrice: 2985.50,
+    basePrice: 1310.00,
     hasFnO: true,
     lotSize: 250,
-    dayHigh: 3005.00,
-    dayLow: 2962.10,
-    fiftyTwoWeekHigh: 3217.90,
-    fiftyTwoWeekLow: 2220.30,
-    volume: "8.4M",
+    dayHigh: 1317.50,
+    dayLow: 1301.50,
+    fiftyTwoWeekHigh: 1611.80,
+    fiftyTwoWeekLow: 1249.80,
+    volume: "10.4M",
     pe: 27.4,
     marketCap: "₹20.2 Lakh Cr",
-    vwap: 2981.20,
+    vwap: 1311.20,
     rsi: 64.2,
     macd: "Bullish Crossover",
     pcr: 1.15,
@@ -31,6 +32,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "TCS",
+    yahooTicker: "TCS.NS",
     name: "Tata Consultancy Services",
     exchange: "NSE & BSE",
     sector: "IT Services",
@@ -52,6 +54,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "HDFCBANK",
+    yahooTicker: "HDFCBANK.NS",
     name: "HDFC Bank Ltd",
     exchange: "NSE & BSE",
     sector: "Banking & Financials",
@@ -73,6 +76,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "INFY",
+    yahooTicker: "INFY.NS",
     name: "Infosys Ltd",
     exchange: "NSE & BSE",
     sector: "IT Services",
@@ -94,6 +98,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "TATAMOTORS",
+    yahooTicker: "TATAMOTORS.NS",
     name: "Tata Motors Ltd",
     exchange: "NSE & BSE",
     sector: "Automobile",
@@ -115,6 +120,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "ICICIBANK",
+    yahooTicker: "ICICIBANK.NS",
     name: "ICICI Bank Ltd",
     exchange: "NSE & BSE",
     sector: "Banking & Financials",
@@ -136,6 +142,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "SBIN",
+    yahooTicker: "SBIN.NS",
     name: "State Bank of India",
     exchange: "NSE & BSE",
     sector: "PSU Banking",
@@ -157,6 +164,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "ZOMATO",
+    yahooTicker: "ZOMATO.NS",
     name: "Eternal / Zomato Ltd",
     exchange: "NSE & BSE",
     sector: "Consumer Tech / Quick Commerce",
@@ -178,6 +186,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "ITC",
+    yahooTicker: "ITC.NS",
     name: "ITC Limited",
     exchange: "NSE & BSE",
     sector: "FMCG / Hotels",
@@ -199,6 +208,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "SUZLON",
+    yahooTicker: "SUZLON.NS",
     name: "Suzlon Energy Ltd",
     exchange: "NSE & BSE",
     sector: "Renewable Energy",
@@ -220,6 +230,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "TATASTEEL",
+    yahooTicker: "TATASTEEL.NS",
     name: "Tata Steel Ltd",
     exchange: "NSE & BSE",
     sector: "Metals & Mining",
@@ -241,6 +252,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "BHARTIARTL",
+    yahooTicker: "BHARTIARTL.NS",
     name: "Bharti Airtel Ltd",
     exchange: "NSE & BSE",
     sector: "Telecom",
@@ -262,6 +274,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "L&T",
+    yahooTicker: "LT.NS",
     name: "Larsen & Toubro Ltd",
     exchange: "NSE & BSE",
     sector: "Infrastructure & Engineering",
@@ -283,6 +296,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "MARUTI",
+    yahooTicker: "MARUTI.NS",
     name: "Maruti Suzuki India Ltd",
     exchange: "NSE & BSE",
     sector: "Automobile",
@@ -304,6 +318,7 @@ export const STOCK_UNIVERSE = [
   },
   {
     symbol: "BAJFINANCE",
+    yahooTicker: "BAJFINANCE.NS",
     name: "Bajaj Finance Ltd",
     exchange: "NSE & BSE",
     sector: "NBFC / Financial Services",

@@ -1,4 +1,4 @@
-// Market Engine for Real-Time Price Simulation & AI Analysis Computation
+// Market Engine for Real-Time Price Simulation & Live Yahoo Finance Fetching
 
 // Helper to format currency in Indian Format (₹ 1,23,456.78)
 export const formatINR = (val) => {
@@ -11,7 +11,62 @@ export const formatINR = (val) => {
   }).format(val);
 };
 
-// Generate realistic intraday candle series for chart
+// Fetch real live quotes and intraday candles from Yahoo Finance API
+export const fetchLiveYahooQuote = async (ticker) => {
+  try {
+    const rawUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=5m&range=1d`;
+    let response;
+    try {
+      response = await fetch(rawUrl);
+      if (!response.ok) throw new Error("Direct fetch blocked");
+    } catch {
+      // Fallback via CORS proxy if browser CORS blocks direct request
+      const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
+      response = await fetch(corsProxyUrl);
+    }
+
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+
+    const meta = result.meta;
+    const price = meta.regularMarketPrice || meta.chartPreviousClose;
+    const timestamps = result.timestamp || [];
+    const quotes = result.indicators?.quote?.[0] || {};
+
+    const candles = timestamps.map((ts, idx) => {
+      const c = quotes.close?.[idx] || price;
+      const o = quotes.open?.[idx] || c;
+      const h = quotes.high?.[idx] || Math.max(o, c);
+      const l = quotes.low?.[idx] || Math.min(o, c);
+      return {
+        time: new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        open: parseFloat(o.toFixed(2)),
+        high: parseFloat(h.toFixed(2)),
+        low: parseFloat(l.toFixed(2)),
+        close: parseFloat(c.toFixed(2)),
+        volume: quotes.volume?.[idx] || 5000,
+        vwap: parseFloat(((o + h + l + c) / 4).toFixed(2))
+      };
+    });
+
+    return {
+      price: parseFloat(price.toFixed(2)),
+      dayHigh: meta.regularMarketDayHigh || price,
+      dayLow: meta.regularMarketDayLow || price,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh || price * 1.2,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow || price * 0.8,
+      volume: meta.regularMarketVolume ? (meta.regularMarketVolume / 1000000).toFixed(1) + 'M' : '8.4M',
+      previousClose: meta.previousClose || price,
+      candles: candles.length > 5 ? candles : null
+    };
+  } catch (err) {
+    console.warn("Yahoo Finance live fetch note:", ticker, err.message);
+    return null;
+  }
+};
+
+// Generate fallback intraday candle series for chart when offline
 export const generateCandles = (basePrice, timeframe = "5m", count = 30) => {
   const candles = [];
   let current = basePrice * 0.985;
@@ -52,7 +107,6 @@ export const calculateFnORecommendation = (stock) => {
   }
 
   const ltp = stock.basePrice;
-  // Step size depending on stock price range
   let step = 50;
   if (ltp < 300) step = 5;
   else if (ltp < 600) step = 10;
@@ -61,14 +115,12 @@ export const calculateFnORecommendation = (stock) => {
   else step = 100;
 
   const atmStrike = Math.round(ltp / step) * step;
-  const callStrike = atmStrike + step; // OTM / ATM Call
-  const putStrike = atmStrike - step;  // OTM / ATM Put
+  const callStrike = atmStrike + step;
+  const putStrike = atmStrike - step;
 
-  // Estimate Option Premiums (~ 1.5% to 2.5% of spot)
   const callPremium = parseFloat((ltp * 0.018).toFixed(2));
   const putPremium = parseFloat((ltp * 0.016).toFixed(2));
 
-  // Determine market trend recommendation (Call vs Put)
   const isBullish = stock.rsi > 52 || stock.macd.includes("Bullish");
   const recommendedType = isBullish ? "CALL" : "PUT";
   const recommendedStrike = isBullish ? callStrike : putStrike;
@@ -84,7 +136,7 @@ export const calculateFnORecommendation = (stock) => {
   return {
     hasFnO: true,
     atmStrike,
-    recommendedType, // CALL or PUT
+    recommendedType,
     recommendedStrike,
     recommendedOptionName: `${stock.symbol} ${recommendedStrike} ${recommendedType === "CALL" ? "CE" : "PE"}`,
     recommendedPremium,
@@ -109,30 +161,25 @@ export const computeAIAgentsAnalysis = (stock) => {
   const ltp = stock.basePrice;
   const fno = calculateFnORecommendation(stock);
 
-  // Scalper Bot Analysis
   const scalperDirection = stock.rsi > 50 ? "BULLISH SCALP" : "BEARISH SCALP";
   const scalperEntry = parseFloat(ltp.toFixed(2));
   const scalperSL = parseFloat((ltp * (stock.rsi > 50 ? 0.994 : 1.006)).toFixed(2));
   const scalperT1 = parseFloat((ltp * (stock.rsi > 50 ? 1.008 : 0.992)).toFixed(2));
   const scalperT2 = parseFloat((ltp * (stock.rsi > 50 ? 1.015 : 0.985)).toFixed(2));
 
-  // Technical Analyst Bot Analysis
   const techTrend = stock.rsi > 60 ? "Strong Uptrend" : stock.rsi < 40 ? "Downtrend" : "Consolidation Range";
   const support1 = parseFloat((ltp * 0.988).toFixed(2));
   const resistance1 = parseFloat((ltp * 1.012).toFixed(2));
   const supertrend = stock.rsi > 48 ? "BUY (Green)" : "SELL (Red)";
 
-  // Money Manager Bot
   const riskPerShare = Math.abs(scalperEntry - scalperSL);
   const rewardPerShare = Math.abs(scalperT1 - scalperEntry);
   const rrRatio = (rewardPerShare / (riskPerShare || 1)).toFixed(2);
-  const recommendedQty = Math.round(5000 / (riskPerShare || 10)); // Based on ₹5,000 risk capital
+  const recommendedQty = Math.round(5000 / (riskPerShare || 10));
 
-  // Sentiment Bot
   const fiiFlow = stock.rsi > 55 ? "+₹1,420 Cr Net Buying" : "-₹680 Cr Net Selling";
   const sentimentScore = Math.min(Math.round(stock.rsi * 1.25), 98);
 
-  // Consensus Bot (Master AI)
   let consensusAction = "STRONG BUY";
   if (sentimentScore < 40) consensusAction = "SELL";
   else if (sentimentScore < 52) consensusAction = "HOLD / NEUTRAL";

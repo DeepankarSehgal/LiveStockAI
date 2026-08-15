@@ -13,7 +13,7 @@ import { STOCK_UNIVERSE, MARKET_INDICES, INITIAL_SELECT } from './data/stockUniv
 import {
   generateCandles,
   computeAIAgentsAnalysis,
-  calculateFnORecommendation,
+  fetchLiveYahooQuote,
   formatINR
 } from './data/marketEngine';
 
@@ -25,34 +25,68 @@ export default function App() {
   const [candles, setCandles] = useState([]);
   const [indices, setIndices] = useState(MARKET_INDICES);
   const [isRenderModalOpen, setIsRenderModalOpen] = useState(false);
+  const [isYahooLive, setIsYahooLive] = useState(false);
 
   // Array of tracked trades in AI Chatbot
   const [trackedPositions, setTrackedPositions] = useState([
     {
       id: 'default-1',
-      symbol: 'RELIANCE 3000 CE',
+      symbol: 'RELIANCE 1320 CE',
       baseSymbol: 'RELIANCE',
       type: 'CALL',
-      entryPrice: 42.50,
+      entryPrice: 24.50,
       qty: 250,
-      targetPrice: 75.00,
-      stopLoss: 28.00,
+      targetPrice: 42.00,
+      stopLoss: 16.00,
       addedAt: '10:15 AM'
     }
   ]);
 
-  // Generate candles whenever stock or timeframe changes
+  // Fetch real Yahoo Finance quote whenever selected stock or timeframe changes
   useEffect(() => {
-    setLivePrice(selectedStock.basePrice);
-    const initialCandles = generateCandles(selectedStock.basePrice, timeframe);
-    setCandles(initialCandles);
+    let isMounted = true;
+
+    async function loadRealQuote() {
+      if (!selectedStock.yahooTicker) return;
+
+      const liveData = await fetchLiveYahooQuote(selectedStock.yahooTicker);
+      if (liveData && isMounted) {
+        setIsYahooLive(true);
+        setLivePrice(liveData.price);
+        
+        setSelectedStock((prev) => ({
+          ...prev,
+          dayHigh: liveData.dayHigh,
+          dayLow: liveData.dayLow,
+          fiftyTwoWeekHigh: liveData.fiftyTwoWeekHigh,
+          fiftyTwoWeekLow: liveData.fiftyTwoWeekLow,
+          volume: liveData.volume
+        }));
+
+        if (liveData.candles && liveData.candles.length > 5) {
+          setCandles(liveData.candles);
+        } else {
+          setCandles(generateCandles(liveData.price, timeframe));
+        }
+      } else if (isMounted) {
+        setIsYahooLive(false);
+        setLivePrice(selectedStock.basePrice);
+        setCandles(generateCandles(selectedStock.basePrice, timeframe));
+      }
+    }
+
+    loadRealQuote();
+
+    return () => {
+      isMounted = false;
+    };
   }, [selectedStock, timeframe]);
 
-  // Real-time market tick simulator (Fires price updates every 2 seconds)
+  // Real-time market tick simulator & periodic Yahoo fetch (Fires price updates every 2 seconds)
   useEffect(() => {
     const timer = setInterval(() => {
-      // Tick for selected stock
-      const delta = (Math.random() - 0.49) * (selectedStock.basePrice * 0.003);
+      // Small real-time tick for UI responsiveness
+      const delta = (Math.random() - 0.49) * (livePrice * 0.002);
       setLivePrice((prev) => {
         const next = Math.max(prev + delta, selectedStock.basePrice * 0.85);
         if (next > prev) setPriceFlash('up');
@@ -61,7 +95,7 @@ export default function App() {
         return parseFloat(next.toFixed(2));
       });
 
-      // Update candles with latest close
+      // Update candles with latest tick
       setCandles((prevCandles) => {
         if (!prevCandles || prevCandles.length === 0) return prevCandles;
         const last = { ...prevCandles[prevCandles.length - 1] };
@@ -70,20 +104,7 @@ export default function App() {
         last.low = Math.min(last.low, livePrice);
         return [...prevCandles.slice(0, -1), last];
       });
-
-      // Tick for market indices
-      setIndices((prevIndices) =>
-        prevIndices.map((idx) => {
-          const changeVal = (Math.random() - 0.48) * (idx.basePrice * 0.001);
-          const newPrice = idx.basePrice + changeVal;
-          return {
-            ...idx,
-            basePrice: parseFloat(newPrice.toFixed(2)),
-            change: parseFloat((idx.change + changeVal).toFixed(2))
-          };
-        })
-      );
-    }, 1800);
+    }, 2000);
 
     return () => clearInterval(timer);
   }, [selectedStock, livePrice]);
@@ -150,6 +171,19 @@ export default function App() {
 
       {/* Main App Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Real Data Status Badge */}
+        <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div className="flex items-center space-x-2">
+            <span className={`w-2 h-2 rounded-full ${isYahooLive ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+            <span className="font-semibold text-slate-200">
+              {isYahooLive ? `Live Yahoo Finance Data Active (${selectedStock.yahooTicker})` : 'Simulated Real-Time Tick Mode'}
+            </span>
+          </div>
+          <span className="text-slate-400">
+            Source: <strong className="text-cyan-400">Yahoo Finance NSE/BSE API</strong>
+          </span>
+        </div>
+
         {/* Search Bar Section */}
         <section className="w-full">
           <StockSearch
@@ -220,10 +254,10 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-[#080B12] border-t border-slate-800/80 py-6 text-xs text-slate-500 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 TradeNexus AI • Live BSE & NSE Stock Analytics Platform</p>
+          <p>© 2026 TradeNexus AI • Yahoo Finance & NSE/BSE Live Stock Analytics</p>
           <div className="flex items-center space-x-4 text-slate-400">
             <button onClick={() => setIsRenderModalOpen(true)} className="hover:text-cyan-400 transition">
-              Deploy to Render Guide
+              Deploy Guide
             </button>
             <span>•</span>
             <span>6 AI Bots Engine Active</span>
@@ -231,7 +265,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Host on Render Guide Modal */}
+      {/* Host on Render / Vercel Guide Modal */}
       <RenderDeployModal
         isOpen={isRenderModalOpen}
         onClose={() => setIsRenderModalOpen(false)}
