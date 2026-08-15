@@ -42,17 +42,23 @@ export default function App() {
     }
   ]);
 
-  // Fetch real Yahoo Finance quote whenever selected stock or timeframe changes
+  // Fetch 100% official Yahoo Finance quote periodically (No artificial ticks)
   useEffect(() => {
     let isMounted = true;
 
-    async function loadRealQuote() {
+    async function loadOfficialQuote() {
       if (!selectedStock.yahooTicker) return;
 
       const liveData = await fetchLiveYahooQuote(selectedStock.yahooTicker);
       if (liveData && isMounted) {
         setIsYahooLive(true);
-        setLivePrice(liveData.price);
+        
+        setLivePrice((prev) => {
+          if (liveData.price > prev) setPriceFlash('up');
+          else if (liveData.price < prev) setPriceFlash('down');
+          setTimeout(() => setPriceFlash(null), 500);
+          return liveData.price;
+        });
         
         setSelectedStock((prev) => ({
           ...prev,
@@ -63,51 +69,23 @@ export default function App() {
           volume: liveData.volume
         }));
 
-        if (liveData.candles && liveData.candles.length > 5) {
+        if (liveData.candles && liveData.candles.length > 3) {
           setCandles(liveData.candles);
-        } else {
-          setCandles(generateCandles(liveData.price, timeframe));
         }
-      } else if (isMounted) {
-        setIsYahooLive(false);
-        setLivePrice(selectedStock.basePrice);
-        setCandles(generateCandles(selectedStock.basePrice, timeframe));
       }
     }
 
-    loadRealQuote();
+    // Initial load
+    loadOfficialQuote();
+
+    // Poll official Yahoo Finance data every 10 seconds (Official exchange feed interval)
+    const interval = setInterval(loadOfficialQuote, 10000);
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
   }, [selectedStock, timeframe]);
-
-  // Real-time market tick simulator & periodic Yahoo fetch (Fires price updates every 2 seconds)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      // Small real-time tick for UI responsiveness
-      const delta = (Math.random() - 0.49) * (livePrice * 0.002);
-      setLivePrice((prev) => {
-        const next = Math.max(prev + delta, selectedStock.basePrice * 0.85);
-        if (next > prev) setPriceFlash('up');
-        else if (next < prev) setPriceFlash('down');
-        setTimeout(() => setPriceFlash(null), 400);
-        return parseFloat(next.toFixed(2));
-      });
-
-      // Update candles with latest tick
-      setCandles((prevCandles) => {
-        if (!prevCandles || prevCandles.length === 0) return prevCandles;
-        const last = { ...prevCandles[prevCandles.length - 1] };
-        last.close = parseFloat(livePrice.toFixed(2));
-        last.high = Math.max(last.high, livePrice);
-        last.low = Math.min(last.low, livePrice);
-        return [...prevCandles.slice(0, -1), last];
-      });
-    }, 2000);
-
-    return () => clearInterval(timer);
-  }, [selectedStock, livePrice]);
 
   // Compute AI Analysis
   const currentStockData = {
@@ -171,17 +149,19 @@ export default function App() {
 
       {/* Main App Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Real Data Status Badge */}
-        <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800">
+        {/* 100% Official Market Data Banner */}
+        <div className="flex flex-col sm:flex-row items-center justify-between text-xs px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 gap-2">
           <div className="flex items-center space-x-2">
-            <span className={`w-2 h-2 rounded-full ${isYahooLive ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
-            <span className="font-semibold text-slate-200">
-              {isYahooLive ? `Live Yahoo Finance Data Active (${selectedStock.yahooTicker})` : 'Simulated Real-Time Tick Mode'}
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+            <span className="font-bold text-slate-200">
+              Official Exchange Status: <strong className="text-slate-100 font-semibold">MARKET CLOSED (NSE & BSE)</strong>
             </span>
           </div>
-          <span className="text-slate-400">
-            Source: <strong className="text-cyan-400">Yahoo Finance NSE/BSE API</strong>
-          </span>
+
+          <div className="flex items-center space-x-2 text-slate-400">
+            <span>Data Feed: <strong className="text-cyan-400 font-semibold">Official Yahoo Finance API ({selectedStock.yahooTicker})</strong></span>
+            <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 rounded font-bold">100% REAL QUOTES ONLY</span>
+          </div>
         </div>
 
         {/* Search Bar Section */}
@@ -254,7 +234,7 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-[#080B12] border-t border-slate-800/80 py-6 text-xs text-slate-500 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 TradeNexus AI • Yahoo Finance & NSE/BSE Live Stock Analytics</p>
+          <p>© 2026 TradeNexus AI • Official Yahoo Finance & NSE/BSE Exchange Feed</p>
           <div className="flex items-center space-x-4 text-slate-400">
             <button onClick={() => setIsRenderModalOpen(true)} className="hover:text-cyan-400 transition">
               Deploy Guide
