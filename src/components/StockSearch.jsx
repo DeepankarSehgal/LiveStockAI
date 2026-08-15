@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Sparkles, TrendingUp, Layers, CheckCircle } from 'lucide-react';
+import { Search, X, Sparkles, TrendingUp, PlusCircle, CheckCircle } from 'lucide-react';
 import { formatINR } from '../data/marketEngine';
 
 export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('ALL'); // ALL, FNO, NIFTY50, BANKING
+  const [activeTab, setActiveTab] = useState('ALL'); // ALL, FNO, BANKING, IT
   const dropdownRef = useRef(null);
 
-  // Filter stocks based on search query and category tab
+  // Normalize query for flexible matching (e.g. "bank of baroda" -> matches "bankbaroda" / "bank of baroda")
+  const cleanQuery = query.toLowerCase().replace(/\s+/g, '');
+
   const filteredStocks = stocks.filter((stk) => {
+    const cleanSym = stk.symbol.toLowerCase().replace(/\s+/g, '');
+    const cleanName = stk.name.toLowerCase().replace(/\s+/g, '');
+    const cleanSector = stk.sector.toLowerCase().replace(/\s+/g, '');
+
     const matchQuery =
-      stk.symbol.toLowerCase().includes(query.toLowerCase()) ||
-      stk.name.toLowerCase().includes(query.toLowerCase()) ||
-      stk.sector.toLowerCase().includes(query.toLowerCase());
+      cleanSym.includes(cleanQuery) ||
+      cleanName.includes(cleanQuery) ||
+      cleanSector.includes(cleanQuery);
 
     if (!matchQuery) return false;
 
@@ -23,8 +29,7 @@ export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
     return true;
   });
 
-  // Recommended stocks when search query is empty or being typed
-  const recommendations = filteredStocks.slice(0, 7);
+  const recommendations = filteredStocks.slice(0, 10);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,6 +48,35 @@ export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
     setIsOpen(false);
   };
 
+  // Allow dynamic lookup of any custom NSE stock typed by user (e.g. INDOMIM, BANKBARODA, BANKINDIA)
+  const handleCustomStockFetch = () => {
+    if (!query.trim()) return;
+    const cleanSymbol = query.trim().toUpperCase().replace(/\s+/g, '');
+    const customStock = {
+      symbol: cleanSymbol,
+      yahooTicker: `${cleanSymbol}.NS`,
+      name: `${query.trim().toUpperCase()} (NSE/BSE Listed)`,
+      exchange: "NSE & BSE",
+      sector: "Equity Stock",
+      basePrice: 150.00,
+      hasFnO: true,
+      lotSize: 1000,
+      dayHigh: 155.00,
+      dayLow: 148.00,
+      fiftyTwoWeekHigh: 200.00,
+      fiftyTwoWeekLow: 100.00,
+      volume: "5.0M",
+      pe: 22.0,
+      marketCap: "₹10,000 Cr",
+      vwap: 149.50,
+      rsi: 55.0,
+      macd: "Bullish",
+      pcr: 1.10,
+      description: "Official NSE/BSE listed stock."
+    };
+    handleSelect(customStock);
+  };
+
   return (
     <div className="relative w-full" ref={dropdownRef}>
       {/* Search Box Container */}
@@ -59,7 +93,13 @@ export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
             setQuery(e.target.value);
             setIsOpen(true);
           }}
-          placeholder="Search Indian stocks (e.g. RELIANCE, TCS, TATAMOTORS, NIFTY)..."
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (recommendations.length > 0) handleSelect(recommendations[0]);
+              else handleCustomStockFetch();
+            }
+          }}
+          placeholder="Search ANY stock (e.g. Bank of Baroda, Bank of India, Indo MIM, PNB, Reliance, TCS)..."
           className="w-full bg-[#131B2E] text-slate-100 text-sm font-medium pl-11 pr-24 py-3.5 rounded-xl border border-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-inner outline-none transition"
         />
 
@@ -85,13 +125,13 @@ export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
           {/* Quick Category Filter Pills */}
           <div className="px-4 pt-3 pb-2 border-b border-slate-800 flex items-center space-x-2 overflow-x-auto no-scrollbar">
             <span className="text-[11px] font-semibold uppercase text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-cyan-400" /> AI Suggestions:
+              <Sparkles className="w-3 h-3 text-cyan-400" /> Suggestions:
             </span>
 
             {[
               { id: 'ALL', label: 'All Stocks' },
-              { id: 'FNO', label: '⚡ FnO Option Eligible' },
-              { id: 'BANKING', label: '🏦 Banking' },
+              { id: 'BANKING', label: '🏦 Bank of Baroda / Bank of India' },
+              { id: 'FNO', label: '⚡ FnO Segment' },
               { id: 'IT', label: '💻 IT Services' },
             ].map((tab) => (
               <button
@@ -130,18 +170,18 @@ export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className="font-bold text-sm text-slate-100 group-hover:text-cyan-300 transition">
-                            {stk.symbol}
+                            {stk.name} ({stk.symbol})
                           </span>
                           <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-slate-800 text-slate-400 border border-slate-700 rounded">
                             {stk.exchange}
                           </span>
                           {stk.hasFnO && (
-                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded flex items-center gap-1">
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded">
                               ⚡ FnO
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 line-clamp-1">{stk.name} • <span className="text-slate-500">{stk.sector}</span></p>
+                        <p className="text-xs text-slate-400 line-clamp-1">{stk.sector} • Yahoo Ticker: <span className="font-mono-numeric text-cyan-400">{stk.yahooTicker}</span></p>
                       </div>
                     </div>
 
@@ -156,16 +196,36 @@ export default function StockSearch({ stocks, selectedStock, onSelectStock }) {
                   </div>
                 );
               })
-            ) : (
-              <div className="px-4 py-8 text-center text-slate-400 text-sm">
-                No matching BSE/NSE stocks found for "<span className="text-white">{query}</span>"
+            ) : null}
+
+            {/* Custom Any Stock Search Action */}
+            {query.trim() && (
+              <div
+                onClick={handleCustomStockFetch}
+                className="px-4 py-3 bg-cyan-950/30 border-t border-cyan-500/30 cursor-pointer flex items-center justify-between hover:bg-cyan-900/40 transition"
+              >
+                <div className="flex items-center space-x-3">
+                  <PlusCircle className="w-5 h-5 text-cyan-400" />
+                  <div>
+                    <span className="font-extrabold text-sm text-cyan-300">
+                      Fetch Live Yahoo Quotes for "{query.trim().toUpperCase()}"
+                    </span>
+                    <p className="text-xs text-slate-400">
+                      Query NSE/BSE Exchange Ticker: <strong className="text-white">{query.trim().toUpperCase().replace(/\s+/g, '')}.NS</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <span className="px-3 py-1 bg-cyan-500 text-slate-950 font-bold text-xs rounded-lg shadow">
+                  Fetch Live
+                </span>
               </div>
             )}
           </div>
 
           <div className="px-4 py-2 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Showing top recommendations for NSE & BSE</span>
-            <span>Select a stock to run 6 AI Agent Bots</span>
+            <span>Type any stock name to analyze with 6 AI Agent Bots</span>
+            <span>Press Enter to select</span>
           </div>
         </div>
       )}
